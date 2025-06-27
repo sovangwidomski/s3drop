@@ -42,22 +42,37 @@ Select option: 1
 
 ## 🚀 Installation
 
-### Option 1: Install from PyPI (Coming Soon)
+### Option 1: Install from GitHub (Available Now)
+```bash
+# Install latest version directly from GitHub
+pip install git+https://github.com/sovangwidomski/s3drop.git
+
+# Or install a specific version/tag
+pip install git+https://github.com/sovangwidomski/s3drop.git@v1.0.0
+```
+
+### Option 2: Install from PyPI (Coming Soon)
 ```bash
 pip install s3-drop
 ```
 
-### Option 2: Install from Source
+### Option 3: Install from Source (Development)
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/s3-drop.git
-cd s3-drop
+git clone https://github.com/sovangwidomski/s3drop.git
+cd s3drop
 
 # Install in development mode
 pip install -e .
+```
 
-# Verify installation
+### Verify Installation
+```bash
+# Check version
 s3drop --version
+
+# Start interactive mode
+s3drop
 ```
 
 ### Prerequisites
@@ -71,6 +86,9 @@ s3drop --version
 ```bash
 # Configure AWS credentials (if not already done)
 aws configure
+
+# Install S3-Drop
+pip install git+https://github.com/sovangwidomski/s3drop.git
 
 # Start S3-Drop interactive mode
 s3drop
@@ -100,13 +118,15 @@ Generate stunning HTML upload interfaces:
 - **File Validation** - Client-side size and type checking
 - **Custom Styling** - Professional, responsive design
 - **Security** - Direct-to-S3 uploads, no server required
+- **Upload History** - Persistent confirmation and file tracking
+- **Mobile Friendly** - Works perfectly on phones and tablets
 
 **Example upload form features:**
 - 5GB default file size limit (configurable)
 - File type restrictions (images, documents, etc.)
 - Custom expiration times
 - Organized folder prefixes
-- Mobile-friendly interface
+- Celebration animations and success confirmation
 
 ### 📥 Download URLs
 Create secure download links:
@@ -174,6 +194,8 @@ s3drop
 - Client-side file validation
 - Mobile-responsive design
 - Direct S3 upload (secure)
+- Upload history tracking
+- Success confirmation that persists
 
 ### Download URL Generation
 
@@ -466,8 +488,8 @@ We welcome contributions! Here's how to get started:
 ### Development Setup
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/s3-drop.git
-cd s3-drop
+git clone https://github.com/sovangwidomski/s3drop.git
+cd s3drop
 
 # Create virtual environment
 python -m venv venv
@@ -487,7 +509,7 @@ black src/
 
 ### Project Structure
 ```
-s3-drop/
+s3drop/
 ├── src/s3drop/           # Main package
 │   ├── __init__.py       # Package initialization
 │   └── cli.py            # CLI implementation
@@ -516,6 +538,8 @@ s3-drop/
 - ✅ **CORS auto-setup** and verification
 - ✅ **Favorite buckets** management
 - ✅ **Professional CLI** with emojis and clear feedback
+- ✅ **Persistent success confirmation** with upload history
+- ✅ **Mobile-responsive** upload forms
 
 ## 📄 License
 
@@ -532,6 +556,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **⭐ If S3-Drop makes your file sharing easier, please star the repository!**
 
-**🐛 Found a bug or have a feature request? [Open an issue](https://github.com/yourusername/s3-drop/issues)**
+**🐛 Found a bug or have a feature request? [Open an issue](https://github.com/sovangwidomski/s3drop/issues)**
 
-**💬 Questions? [Start a discussion](https://github.com/yourusername/s3-drop/discussions)**
+**💬 Questions? [Start a discussion](https://github.com/sovangwidomski/s3drop/discussions)**
