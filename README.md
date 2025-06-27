@@ -11,11 +11,12 @@ S3-Drop transforms the complex process of generating S3 presigned URLs into a de
 ## ✨ What It Does
 
 - **📤 Upload Forms** - Generate beautiful HTML forms with drag & drop file upload
-- **📥 Download URLs** - Create secure, time-limited download links
+- **📥 Download URLs** - Create secure, time-limited download links with professional instruction pages
 - **🔧 Smart Configuration** - Save your settings, favorite buckets, and preferences  
 - **📋 History Tracking** - Keep track of all your generated URLs and forms
 - **🔒 CORS Management** - Automatically detect and configure CORS settings
-- **🎯 Interactive Mode** - Menu-driven interface that's actually enjoyable to use
+- **🎯 Interactive Mode** - Menu-driven interface with file browsing and smart navigation
+- **📁 File Browser** - Navigate S3 buckets like a file manager to select files easily
 
 ## 🎬 Quick Demo
 
@@ -129,12 +130,16 @@ Generate stunning HTML upload interfaces:
 - Celebration animations and success confirmation
 
 ### 📥 Download URLs
-Create secure download links:
+Create secure download links with professional instruction pages:
 
-- **Time-Limited** - Configurable expiration (1 hour to 7 days)
+- **Interactive File Browsing** - Navigate S3 buckets like a file manager
+- **Smart Bucket Selection** - Choose from favorites and available buckets
+- **File Information** - See file sizes, modification dates, and folder structure
+- **Professional Output** - Generate HTML instruction pages with download buttons
+- **Time-Limited** - Configurable expiration with actual dates and times
 - **Direct Access** - No authentication required for recipients
-- **Audit Trail** - Track when URLs were generated
-- **Bulk Generation** - Create multiple URLs efficiently
+- **Easy Sharing** - Copy links or share instruction files
+- **Usage Instructions** - Clear guidance on how to download files
 
 ### 🔧 Smart Configuration
 Never repeat yourself:
@@ -528,6 +533,20 @@ s3drop/
 
 ## 🔄 Changelog
 
+### v1.1.0 (2025-01-27)
+- 🎉 **Major UX overhaul for both upload and download workflows**
+- ✅ **Fixed upload form auto-reset issue** - persistent success confirmation
+- ✅ **Upload history tracking** - see all uploads in the same session
+- ✅ **Interactive file browsing** - navigate S3 buckets like a file manager
+- ✅ **Professional download pages** - HTML instruction files with download buttons
+- ✅ **Actual expiration times** - show real dates instead of relative durations
+- ✅ **Smart bucket selection** - favorites and available buckets for both workflows
+- ✅ **Celebration features** - animations and sounds for successful uploads
+- ✅ **Mobile responsive design** - works great on all devices
+- ✅ **Copy URL functionality** - easy sharing of S3 links
+- ✅ **File metadata display** - sizes, dates, and folder structure
+- ✅ **Better error handling** - clearer guidance when things go wrong
+
 ### v1.0.0 (2025-01-XX)
 - 🎉 **Initial release**
 - ✅ **Interactive mode** with menu-driven interface
@@ -538,8 +557,6 @@ s3drop/
 - ✅ **CORS auto-setup** and verification
 - ✅ **Favorite buckets** management
 - ✅ **Professional CLI** with emojis and clear feedback
-- ✅ **Persistent success confirmation** with upload history
-- ✅ **Mobile-responsive** upload forms
 
 ## 📄 License
 
