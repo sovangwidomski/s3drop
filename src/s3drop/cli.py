@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, ProfileNotFound
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 class S3DropConfig:
     """Manage S3-Drop configuration and state."""

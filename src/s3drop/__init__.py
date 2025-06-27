@@ -39,7 +39,7 @@ Example:
     )
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "Your Name"
 __email__ = "your.email@example.com"
 __description__ = "Professional S3 presigned URL generator with drag & drop HTML interfaces"
