@@ -9,7 +9,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
@@ -270,7 +270,7 @@ def format_duration(seconds: int) -> str:
 
 
 def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
-    """Generate HTML upload form."""
+    """Generate HTML upload form with improved success handling."""
     url = presigned_post['url']
     fields = presigned_post['fields']
     
@@ -280,6 +280,11 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
     prefix = config_data.get('prefix', '')
     allowed_types = config_data.get('allowed_types', [])
     expiration_hours = config_data.get('expiration_hours', 1)
+    
+    # Calculate actual expiration time
+    from datetime import datetime, timedelta
+    expiration_time = datetime.now() + timedelta(hours=expiration_hours)
+    expiration_display = expiration_time.strftime('%B %d, %Y at %I:%M %p')
     
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -352,6 +357,10 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
             transform: scale(1.02);
         }}
         
+        .upload-area.hidden {{
+            display: none;
+        }}
+        
         .upload-icon {{
             font-size: 4em;
             margin-bottom: 20px;
@@ -389,6 +398,7 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
             transition: all 0.3s ease;
             display: inline-block;
             text-decoration: none;
+            margin: 5px;
         }}
         
         .btn:hover {{
@@ -401,6 +411,14 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }}
+        
+        .btn-secondary {{
+            background: #6c757d;
+        }}
+        
+        .btn-secondary:hover {{
+            background: #545b62;
         }}
         
         .file-info {{
@@ -481,6 +499,62 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
             border-left: 4px solid #dc3545;
         }}
         
+        /* New styles for upload history */
+        .upload-history {{
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }}
+        
+        .upload-history h3 {{
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .upload-item {{
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #28a745;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }}
+        
+        .upload-item:last-child {{
+            margin-bottom: 0;
+        }}
+        
+        .upload-item-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }}
+        
+        .upload-item-name {{
+            font-weight: 600;
+            color: #2c3e50;
+        }}
+        
+        .upload-item-time {{
+            font-size: 0.9em;
+            color: #6c757d;
+        }}
+        
+        .upload-item-details {{
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }}
+        
+        .success-actions {{
+            margin-top: 15px;
+        }}
+        
         .limits {{
             background: #f8f9fa;
             border-radius: 8px;
@@ -512,6 +586,17 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
             margin-right: 10px;
         }}
         
+        /* Celebration animation */
+        @keyframes celebrate {{
+            0% {{ transform: scale(1); }}
+            50% {{ transform: scale(1.05); }}
+            100% {{ transform: scale(1); }}
+        }}
+        
+        .celebrate {{
+            animation: celebrate 0.6s ease-in-out;
+        }}
+        
         @media (max-width: 600px) {{
             .upload-container {{
                 padding: 30px 20px;
@@ -523,6 +608,12 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
             
             .header h1 {{
                 font-size: 1.5em;
+            }}
+            
+            .upload-item-header {{
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
             }}
         }}
     </style>
@@ -570,11 +661,21 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
         
         <div class="status" id="status"></div>
         
+        <!-- New upload history section -->
+        <div class="upload-history" id="uploadHistory">
+            <h3>✅ Completed Uploads <span id="uploadCount">(0)</span></h3>
+            <div id="uploadList"></div>
+            <div class="success-actions">
+                <button class="btn" onclick="startNewUpload()">📁 Upload Another File</button>
+                <button class="btn btn-secondary" onclick="copyLastUrl()" id="copyUrlBtn" style="display: none;">📋 Copy Last S3 URL</button>
+            </div>
+        </div>
+        
         <div class="limits">
             <h3>📝 Upload Limits</h3>
             <ul>
                 <li>Maximum file size: {format_file_size(max_size_bytes)}</li>
-                <li>Upload expires in: {expiration_hours} hour{'s' if expiration_hours != 1 else ''}</li>
+                <li>Upload expires: {expiration_display}</li>
                 {('<li>Allowed types: ' + ', '.join(allowed_types) + '</li>') if allowed_types else '<li>All file types allowed</li>'}
                 <li>Files upload directly to S3 (secure)</li>
             </ul>
@@ -593,11 +694,30 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
         const status = document.getElementById('status');
+        const uploadHistory = document.getElementById('uploadHistory');
+        const uploadList = document.getElementById('uploadList');
+        const uploadCount = document.getElementById('uploadCount');
+        const copyUrlBtn = document.getElementById('copyUrlBtn');
         
         let selectedFile = null;
+        let uploadCounter = 0;
+        let completedUploads = [];
         const uploadUrl = '{url}';
         const prefix = '{prefix}';
         const maxFileSize = {max_size_bytes};
+        const bucket = '{bucket}';
+        const expiresAt = '{expiration_display}';
+
+        // Sound for success (optional - works in most browsers)
+        function playSuccessSound() {{
+            try {{
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsiCT2YzO/OgiMGMnvC7+GVSA0PVajh8bllHgg2jdXz0H0vBSF+zPLaizsIGGS5+OOeLQ==');
+                audio.volume = 0.3;
+                audio.play().catch(() => {{}}); // Ignore if audio fails
+            }} catch (e) {{
+                // Ignore audio errors
+            }}
+        }}
 
         // Drag and drop handlers
         uploadArea.addEventListener('dragover', (e) => {{
@@ -630,6 +750,10 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
             const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }}
+
+        function formatTime(date) {{
+            return date.toLocaleTimeString([], {{hour: '2-digit', minute:'2-digit'}});
         }}
 
         function handleFileSelect(file) {{
@@ -683,14 +807,35 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
 
             xhr.onload = function() {{
                 if (xhr.status === 204 || xhr.status === 200) {{
-                    showStatus('🎉 File uploaded successfully to: ' + actualKey, 'success');
+                    // Success! Add to history and show persistent confirmation
+                    const uploadInfo = {{
+                        name: selectedFile.name,
+                        size: selectedFile.size,
+                        key: actualKey,
+                        time: new Date(),
+                        s3Url: `https://${{bucket}}.s3.amazonaws.com/${{actualKey}}`
+                    }};
+                    
+                    addToUploadHistory(uploadInfo);
+                    showPersistentSuccess(uploadInfo);
+                    
+                    // Play success sound
+                    playSuccessSound();
+                    
+                    // Celebration animation
+                    document.querySelector('.upload-container').classList.add('celebrate');
+                    setTimeout(() => {{
+                        document.querySelector('.upload-container').classList.remove('celebrate');
+                    }}, 600);
+                    
                     progressFill.style.width = '100%';
                     progressText.textContent = '100%';
                     
-                    // Reset form after delay
-                    setTimeout(() => {{
-                        resetForm();
-                    }}, 3000);
+                    // Hide upload area and file info, show history
+                    uploadArea.classList.add('hidden');
+                    fileInfo.style.display = 'none';
+                    uploadHistory.style.display = 'block';
+                    
                 }} else {{
                     showStatus('Upload failed (Status ' + xhr.status + '): ' + (xhr.responseText || xhr.statusText), 'error');
                     uploadBtn.disabled = false;
@@ -706,25 +851,93 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
             xhr.send(formData);
         }}
 
-        function showStatus(message, type) {{
-            status.textContent = message;
-            status.className = 'status ' + type;
+        function addToUploadHistory(uploadInfo) {{
+            completedUploads.push(uploadInfo);
+            uploadCounter++;
+            
+            // Update counter
+            uploadCount.textContent = `(${{uploadCounter}})`;
+            
+            // Create upload item
+            const uploadItem = document.createElement('div');
+            uploadItem.className = 'upload-item';
+            uploadItem.innerHTML = `
+                <div class="upload-item-header">
+                    <div class="upload-item-name">📁 ${{uploadInfo.name}}</div>
+                    <div class="upload-item-time">${{formatTime(uploadInfo.time)}}</div>
+                </div>
+                <div class="upload-item-details">
+                    <strong>Size:</strong> ${{formatFileSize(uploadInfo.size)}} • 
+                    <strong>Location:</strong> ${{uploadInfo.key}}
+                </div>
+            `;
+            
+            // Add to top of list
+            uploadList.insertBefore(uploadItem, uploadList.firstChild);
+            
+            // Show copy URL button
+            copyUrlBtn.style.display = 'inline-block';
+        }}
+
+        function showPersistentSuccess(uploadInfo) {{
+            const message = `🎉 Successfully uploaded "${{uploadInfo.name}}" to S3!<br>
+                           <small>Location: ${{uploadInfo.key}}</small>`;
+            status.innerHTML = message;
+            status.className = 'status success';
             status.style.display = 'block';
+            
+            // Don't hide the status - let it stay visible
         }}
 
-        function hideStatus() {{
-            status.style.display = 'none';
-        }}
-
-        function resetForm() {{
+        function startNewUpload() {{
+            // Reset for new upload
             selectedFile = null;
             fileInput.value = '';
+            uploadArea.classList.remove('hidden');
             fileInfo.style.display = 'none';
             progressContainer.style.display = 'none';
             progressFill.style.width = '0%';
             progressText.textContent = '0%';
             uploadBtn.disabled = false;
             hideStatus();
+        }}
+
+        function copyLastUrl() {{
+            if (completedUploads.length > 0) {{
+                const lastUpload = completedUploads[completedUploads.length - 1];
+                navigator.clipboard.writeText(lastUpload.s3Url).then(() => {{
+                    // Temporarily change button text
+                    const originalText = copyUrlBtn.textContent;
+                    copyUrlBtn.textContent = '✅ Copied!';
+                    setTimeout(() => {{
+                        copyUrlBtn.textContent = originalText;
+                    }}, 2000);
+                }}).catch(() => {{
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = lastUpload.s3Url;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    
+                    const originalText = copyUrlBtn.textContent;
+                    copyUrlBtn.textContent = '✅ Copied!';
+                    setTimeout(() => {{
+                        copyUrlBtn.textContent = originalText;
+                    }}, 2000);
+                }});
+            }}
+        }}
+
+        function showStatus(message, type) {{
+            status.innerHTML = message;
+            status.className = 'status ' + type;
+            status.style.display = 'block';
+        }}
+
+        function hideStatus() {{
+            status.style.display = 'none';
         }}
     </script>
 </body>
