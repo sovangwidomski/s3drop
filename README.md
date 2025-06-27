@@ -42,7 +42,7 @@ Select option: 1
 
 ## 🚀 Installation
 
-### Option 1: Install from GitHub
+### Option 1: Install from GitHub (Reccomended)
 ```bash
 # Install latest version directly from GitHub
 pip install git+https://github.com/sovangwidomski/s3drop.git
