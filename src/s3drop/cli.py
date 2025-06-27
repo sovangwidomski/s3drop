@@ -222,6 +222,54 @@ class S3DropClient:
                 operation_name='GeneratePresignedPost'
             )
     
+    def list_objects(self, bucket: str, prefix: str = '', max_keys: int = 100) -> List[Dict]:
+        """List objects in S3 bucket."""
+        try:
+            params = {
+                'Bucket': bucket,
+                'MaxKeys': max_keys
+            }
+            if prefix:
+                params['Prefix'] = prefix
+                
+            response = self.client.list_objects_v2(**params)
+            
+            objects = []
+            if 'Contents' in response:
+                for obj in response['Contents']:
+                    objects.append({
+                        'key': obj['Key'],
+                        'size': obj['Size'],
+                        'modified': obj['LastModified'],
+                        'storage_class': obj.get('StorageClass', 'STANDARD')
+                    })
+            
+            return sorted(objects, key=lambda x: x['key'])
+        except Exception:
+            return []
+    
+    def list_prefixes(self, bucket: str, prefix: str = '', delimiter: str = '/') -> List[str]:
+        """List common prefixes (folders) in S3 bucket."""
+        try:
+            params = {
+                'Bucket': bucket,
+                'Delimiter': delimiter,
+                'MaxKeys': 100
+            }
+            if prefix:
+                params['Prefix'] = prefix
+                
+            response = self.client.list_objects_v2(**params)
+            
+            prefixes = []
+            if 'CommonPrefixes' in response:
+                for cp in response['CommonPrefixes']:
+                    prefixes.append(cp['Prefix'])
+            
+            return sorted(prefixes)
+        except Exception:
+            return []
+    
     def generate_presigned_url(self, bucket: str, key: str, 
                              expiration_seconds: int = 3600, 
                              method: str = 'get_object') -> str:
@@ -247,6 +295,264 @@ def format_file_size(size_bytes: int) -> str:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
     return f"{size_bytes:.1f} PB"
+
+
+def generate_download_instructions(download_url: str, bucket: str, key: str, expiration_time: datetime) -> str:
+    """Generate HTML file with download instructions."""
+    expiration_display = expiration_time.strftime('%B %d, %Y at %I:%M %p')
+    
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S3-Drop Download Link</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }}
+        
+        .download-container {{
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        
+        .header h1 {{
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }}
+        
+        .header .subtitle {{
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }}
+        
+        .file-info {{
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }}
+        
+        .file-info h3 {{
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }}
+        
+        .file-detail {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }}
+        
+        .file-detail:last-child {{
+            border-bottom: none;
+            margin-bottom: 0;
+        }}
+        
+        .download-section {{
+            background: #e8f5e8;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }}
+        
+        .download-url {{
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+            margin: 15px 0;
+            color: #495057;
+        }}
+        
+        .btn {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+            margin: 5px;
+        }}
+        
+        .btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }}
+        
+        .btn-success {{
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }}
+        
+        .btn-secondary {{
+            background: #6c757d;
+        }}
+        
+        .instructions {{
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }}
+        
+        .instructions h3 {{
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }}
+        
+        .instructions ol {{
+            color: #495057;
+            padding-left: 20px;
+        }}
+        
+        .instructions li {{
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }}
+        
+        .warning {{
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }}
+        
+        .warning strong {{
+            color: #856404;
+        }}
+        
+        @media (max-width: 600px) {{
+            .download-container {{
+                padding: 30px 20px;
+            }}
+            
+            .header h1 {{
+                font-size: 1.5em;
+            }}
+            
+            .file-detail {{
+                flex-direction: column;
+                gap: 5px;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="download-container">
+        <div class="header">
+            <h1>📥 S3-Drop Download</h1>
+            <div class="subtitle">Secure file download link</div>
+        </div>
+        
+        <div class="file-info">
+            <h3>📋 File Information</h3>
+            <div class="file-detail">
+                <span><strong>Bucket:</strong></span>
+                <span>{bucket}</span>
+            </div>
+            <div class="file-detail">
+                <span><strong>File Path:</strong></span>
+                <span>{key}</span>
+            </div>
+            <div class="file-detail">
+                <span><strong>Expires:</strong></span>
+                <span>{expiration_display}</span>
+            </div>
+        </div>
+        
+        <div class="download-section">
+            <h3>🔗 Download Link</h3>
+            <div class="download-url" id="downloadUrl">{download_url}</div>
+            <button class="btn btn-success" onclick="downloadFile()">📥 Download File</button>
+            <button class="btn btn-secondary" onclick="copyUrl()">📋 Copy Link</button>
+        </div>
+        
+        <div class="instructions">
+            <h3>📖 How to Use This Link</h3>
+            <ol>
+                <li><strong>Click "Download File"</strong> to download immediately</li>
+                <li><strong>Copy the link</strong> to share with others</li>
+                <li><strong>Right-click "Download File"</strong> and "Save Link As..." to save to a specific location</li>
+                <li><strong>The link works in any browser</strong> - no AWS account needed</li>
+                <li><strong>Share safely</strong> - anyone with this link can download the file</li>
+            </ol>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> This download link expires on {expiration_display}. After that time, the link will no longer work and you'll need to generate a new one.
+        </div>
+    </div>
+
+    <script>
+        function downloadFile() {{
+            window.open('{download_url}', '_blank');
+        }}
+
+        function copyUrl() {{
+            const url = document.getElementById('downloadUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {{
+                // Temporarily change button text
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {{
+                    btn.textContent = originalText;
+                }}, 2000);
+            }}).catch(() => {{
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = url;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {{
+                    btn.textContent = originalText;
+                }}, 2000);
+            }});
+        }}
+    </script>
+</body>
+</html>"""
 
 
 def format_duration(seconds: int) -> str:
@@ -282,7 +588,6 @@ def generate_upload_html(presigned_post: Dict, config_data: Dict) -> str:
     expiration_hours = config_data.get('expiration_hours', 1)
     
     # Calculate actual expiration time
-    from datetime import datetime, timedelta
     expiration_time = datetime.now() + timedelta(hours=expiration_hours)
     expiration_display = expiration_time.strftime('%B %d, %Y at %I:%M %p')
     
@@ -1293,28 +1598,49 @@ def interactive_upload_form(config: S3DropConfig):
 
 
 def interactive_download_url(config: S3DropConfig):
-    """Interactive download URL generation."""
+    """Interactive download URL generation with improved UX."""
     print(f"\n📥 Generate Download URL")
     print("=" * 50)
     
-    # Bucket selection (similar to upload form)
+    # Bucket selection (same as upload form)
     bucket = config.config['default_bucket']
     if not bucket or input(f"Use default bucket '{bucket}'? (Y/n): ").strip().lower() == 'n':
-        bucket = input("Enter bucket name: ").strip()
+        # Show available buckets
+        buckets = list_buckets(config)
+        favorites = config.config['favorite_buckets']
+        
+        all_buckets = []
+        if favorites:
+            print(f"\n⭐ Favorite buckets:")
+            for i, fav_bucket in enumerate(favorites, 1):
+                print(f"   {i}. {fav_bucket}")
+                all_buckets.append(fav_bucket)
+        
+        if buckets:
+            start_num = len(favorites) + 1
+            print(f"\n📋 Available buckets:")
+            for i, available_bucket in enumerate(buckets, start_num):
+                if available_bucket not in favorites:
+                    print(f"   {i}. {available_bucket}")
+                    all_buckets.append(available_bucket)
+        
+        if all_buckets:
+            try:
+                choice = input(f"\nSelect bucket (number or name): ").strip()
+                try:
+                    bucket_num = int(choice)
+                    if 1 <= bucket_num <= len(all_buckets):
+                        bucket = all_buckets[bucket_num - 1]
+                except ValueError:
+                    bucket = choice
+            except (ValueError, IndexError):
+                bucket = input("Enter bucket name: ").strip()
+        else:
+            bucket = input("Enter bucket name: ").strip()
     
     if not bucket:
         print("❌ Bucket name required")
         return False
-    
-    # File key
-    key = input("Enter file path/key: ").strip()
-    if not key:
-        print("❌ File path required")
-        return False
-    
-    # Expiration
-    expiration_input = input(f"Expiration in hours [{config.config['default_expiration_hours']}]: ").strip()
-    expiration_hours = float(expiration_input) if expiration_input else config.config['default_expiration_hours']
     
     try:
         # Create S3 client
@@ -1326,10 +1652,103 @@ def interactive_download_url(config: S3DropConfig):
             print(f"❌ Bucket '{bucket}' not found or not accessible")
             return False
         
+        # Browse files in bucket
+        print(f"🔍 Loading files from bucket...")
+        current_prefix = ""
+        
+        while True:
+            # List folders and files
+            prefixes = client.list_prefixes(bucket, current_prefix)
+            objects = client.list_objects(bucket, current_prefix, max_keys=50)
+            
+            print(f"\n📁 Current location: s3://{bucket}/{current_prefix}")
+            print("=" * 60)
+            
+            options = []
+            option_num = 1
+            
+            # Add back/up option if not at root
+            if current_prefix:
+                print(f"   {option_num}. 📂 .. (go back)")
+                options.append(('back', ''))
+                option_num += 1
+            
+            # Add folders
+            for prefix in prefixes:
+                folder_name = prefix[len(current_prefix):].rstrip('/')
+                print(f"   {option_num}. 📂 {folder_name}/")
+                options.append(('folder', prefix))
+                option_num += 1
+            
+            # Add files
+            for obj in objects:
+                if obj['key'] != current_prefix:  # Skip folder itself
+                    file_name = obj['key'][len(current_prefix):]
+                    if '/' not in file_name:  # Only immediate files, not nested
+                        size_str = format_file_size(obj['size'])
+                        modified_str = obj['modified'].strftime('%m/%d/%Y')
+                        print(f"   {option_num}. 📄 {file_name} ({size_str}, {modified_str})")
+                        options.append(('file', obj['key']))
+                        option_num += 1
+            
+            if not options:
+                print("   (empty)")
+            
+            print(f"\n💡 Options:")
+            print(f"   m. Enter file path manually")
+            print(f"   r. Refresh")
+            print(f"   q. Cancel")
+            
+            try:
+                choice = input(f"\nSelect option: ").strip().lower()
+                
+                if choice == 'q':
+                    print("👋 Cancelled")
+                    return False
+                elif choice == 'r':
+                    continue
+                elif choice == 'm':
+                    key = input("Enter file path/key: ").strip()
+                    if key:
+                        break
+                    else:
+                        print("❌ File path required")
+                        continue
+                else:
+                    try:
+                        choice_num = int(choice)
+                        if 1 <= choice_num <= len(options):
+                            option_type, option_value = options[choice_num - 1]
+                            
+                            if option_type == 'back':
+                                # Go back one level
+                                if '/' in current_prefix.rstrip('/'):
+                                    current_prefix = '/'.join(current_prefix.rstrip('/').split('/')[:-1]) + '/'
+                                else:
+                                    current_prefix = ""
+                            elif option_type == 'folder':
+                                current_prefix = option_value
+                            elif option_type == 'file':
+                                key = option_value
+                                break
+                        else:
+                            print("❌ Invalid option number")
+                    except ValueError:
+                        print("❌ Please enter a valid number or option")
+                        
+            except KeyboardInterrupt:
+                print("\n👋 Cancelled")
+                return False
+        
+        # Expiration
+        expiration_input = input(f"\nExpiration in hours [{config.config['default_expiration_hours']}]: ").strip()
+        expiration_hours = float(expiration_input) if expiration_input else config.config['default_expiration_hours']
+        
         # Generate presigned URL
-        print(f"🚀 Generating download URL...")
+        print(f"\n🚀 Generating download URL...")
         
         expiration_seconds = int(expiration_hours * 3600)
+        expiration_time = datetime.now() + timedelta(hours=expiration_hours)
         
         download_url = client.generate_presigned_url(
             bucket=bucket,
@@ -1338,18 +1757,38 @@ def interactive_download_url(config: S3DropConfig):
             method='get_object'
         )
         
+        # Create output file
+        timestamp = int(time.time())
+        filename = f"s3drop-download-{bucket.replace('/', '-')}-{timestamp}.html"
+        
+        html_content = generate_download_instructions(download_url, bucket, key, expiration_time)
+        
+        with open(filename, 'w') as f:
+            f.write(html_content)
+        
         print(f"\n✅ Download URL generated successfully!")
-        print(f"🔗 URL: {download_url}")
+        print(f"📄 Instructions file: {filename}")
         print(f"🌍 Bucket: {bucket}")
-        print(f"📄 Key: {key}")
-        print(f"⏰ Expires: {format_duration(expiration_seconds)}")
+        print(f"📁 File: {key}")
+        print(f"⏰ Expires: {expiration_time.strftime('%B %d, %Y at %I:%M %p')}")
+        print(f"\n🔗 Direct URL:")
+        print(f"   {download_url[:80]}...")
+        print(f"\n🎉 Open the HTML file for easy downloading and sharing!")
         
         # Add to history
         config.add_to_history('download', bucket, {
             'key': key,
             'expiration_hours': expiration_hours,
-            'url': download_url
+            'filename': filename,
+            'url': download_url[:100] + '...'  # Truncate for history
         })
+        
+        # Add to favorites if not already there
+        if bucket not in config.config['favorite_buckets']:
+            add_fav = input(f"\nAdd '{bucket}' to favorites? (y/N): ").strip().lower()
+            if add_fav == 'y':
+                config.add_favorite_bucket(bucket)
+                print(f"⭐ Added to favorites")
         
         return True
         
