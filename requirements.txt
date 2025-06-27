@@ -1,0 +1,44 @@
+# S3-Drop - Professional S3 presigned URL generator
+# 
+# RUNTIME DEPENDENCIES
+# These packages are required for S3-Drop to function properly
+
+# AWS SDK for Python - Core S3 functionality
+boto3>=1.26.0
+
+# SYSTEM REQUIREMENTS
+# - Python 3.7 or higher
+# - AWS credentials configured (via AWS CLI, environment variables, or IAM roles)
+#
+# OPTIONAL DEPENDENCIES (for enhanced functionality)
+# None required - S3-Drop uses only boto3 and Python standard library
+
+# DEVELOPMENT DEPENDENCIES (uncomment for development)
+# Testing
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+# pytest-mock>=3.8.0
+
+# Code Quality
+# black>=22.0.0
+# flake8>=5.0.0
+# mypy>=1.0.0
+
+# Documentation
+# sphinx>=5.0.0
+# sphinx-rtd-theme>=1.0.0
+
+# Packaging
+# build>=0.8.0
+# twine>=4.0.0
+
+# INSTALLATION INSTRUCTIONS
+#
+# For end users:
+#   pip install s3-drop
+#
+# For development:
+#   pip install -e .[dev]
+#
+# For specific environments:
+#   pip install -r requirements.txt
