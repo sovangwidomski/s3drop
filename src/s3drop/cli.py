@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, ProfileNotFound
 
-VERSION = "1.1.0"
+VERSION = "1.0.0"
 
 class S3DropConfig:
     """Manage S3-Drop configuration and state."""
@@ -1551,7 +1551,7 @@ def interactive_upload_form(config: S3DropConfig):
         timestamp = int(time.time())
         filename = f"s3drop-upload-{bucket}-{timestamp}.html"
         
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
         print(f"\n✅ Upload form generated successfully!")
@@ -1763,7 +1763,7 @@ def interactive_download_url(config: S3DropConfig):
         
         html_content = generate_download_instructions(download_url, bucket, key, expiration_time)
         
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             f.write(html_content)
         
         print(f"\n✅ Download URL generated successfully!")
